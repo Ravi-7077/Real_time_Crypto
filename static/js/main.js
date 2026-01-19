@@ -1,122 +1,184 @@
-// Global variable to hold the chart instance
-let cryptoChartInstance = null; 
+// Global chart instance
+let cryptoChartInstance = null;
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", () => {
     console.log("Crypto Tracker Frontend Loaded");
-
-    // 1. Start Price Updates
     updatePrices();
-    setInterval(updatePrices, 10000); 
-
-    // 2. Load Bitcoin by default
-    selectCoin('bitcoin');
+    setInterval(updatePrices, 10000);
+    selectCoin("bitcoin"); // default
 });
 
-// --- Function 1: Fetch Real-Time Prices ---
+// --- Fetch Prices ---
 async function updatePrices() {
     try {
-        const response = await fetch('/api/prices');
-        const data = await response.json();
+        const response = await fetch("/api/prices");
+        const { prices, alert, threshold_value } = await response.json();
 
-        if (data.bitcoin) {
-            document.getElementById("price-bitcoin").innerText = `$${data.bitcoin.usd}`;
-            document.getElementById("price-ethereum").innerText = `$${data.ethereum.usd}`;
-            document.getElementById("price-dogecoin").innerText = `$${data.dogecoin.usd}`;
+        if (prices) {
+            document.getElementById("price-bitcoin").innerText = `$${prices.bitcoin.usd}`;
+            document.getElementById("price-ethereum").innerText = `$${prices.ethereum.usd}`;
+            document.getElementById("price-dogecoin").innerText = `$${prices.dogecoin.usd}`;
         }
-    } catch (error) {
-        console.error("Network error:", error);
+
+        if (alert) {
+            showToast(`Bitcoin is below $${threshold_value}! Current: $${prices.bitcoin.usd}`);
+        }
+    } catch (err) {
+        console.error("Network error:", err);
     }
 }
 
-// --- Function 2: Handle Coin Selection (Click) ---
+// --- Toast Helper ---
+function showToast(message) {
+    const toastElement = document.getElementById("priceToast");
+    toastElement.querySelector(".toast-body").innerText = message;
+    new bootstrap.Toast(toastElement).show();
+    new Audio("https://media.geeksforgeeks.org/wp-content/uploads/20190531135120/beep.mp3").play();
+}
+
+// --- Coin Selection ---
 async function selectCoin(coinId) {
-    console.log("Selected coin:", coinId);
-    
-    // Highlight the selected card visually
-    document.querySelectorAll('.coin-card').forEach(card => {
-        card.classList.remove('border-primary', 'border-2'); // Remove highlight from all
-    });
-    // Add highlight to the clicked one (this logic finds the card based on the click event usually, 
-    // but for simplicity here we just visually highlight the chart area or trust the user sees the chart change)
-    
-    // Update Chart Title
-    const titleElement = document.querySelector('.card-header h5');
-    titleElement.innerText = `Price Trend (${coinId.toUpperCase()} - Last 7 Days)`;
-
-    // Fetch History for this specific coin
+    document.querySelector(".card-header h5").innerText = `Price Trend (${coinId.toUpperCase()} - Past Week)`;
     try {
-        const response = await fetch(`/api/history/${coinId}`);
-        const data = await response.json();
-        
-        if(data.prices) {
-            renderChart(data.prices, data.labels, data.color, coinId);
-        }
-    } catch (error) {
-        console.error("Error fetching history:", error);
+        const res = await fetch(`/api/history/${coinId}`);
+        const data = await res.json();
+        if (data.prices) renderLineChart(data.prices, data.labels, data.color, coinId);
+    } catch (err) {
+        console.error("Error fetching history:", err);
     }
 }
 
-// --- Function 3: Render/Update the Chart ---
-function renderChart(prices, labels, color, coinName) {
-    const ctx = document.getElementById('cryptoChart').getContext('2d');
+// --- Line Chart Renderer ---
+function renderLineChart(prices, labels, color, coinName) {
+    const ctx = document.getElementById("cryptoChart").getContext("2d");
+    if (cryptoChartInstance) cryptoChartInstance.destroy();
 
-    // IMPORTANT: If a chart already exists, destroy it before making a new one
-    if (cryptoChartInstance) {
-        cryptoChartInstance.destroy();
-    }
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, "rgba(0, 200, 255, 0.6)");
+    gradient.addColorStop(1, "rgba(0, 100, 200, 0.1)");
 
     cryptoChartInstance = new Chart(ctx, {
-        type: 'line',
+        type: "line",
         data: {
-            labels: labels,
+            labels,
             datasets: [{
                 label: `${coinName.toUpperCase()} Price (USD)`,
                 data: prices,
-                borderColor: color || 'rgba(255, 193, 7, 1)',
-                backgroundColor: color ? color.replace('1)', '0.2)') : 'rgba(255, 193, 7, 0.2)',
-                borderWidth: 2,
+                borderColor: color || "rgba(0, 200, 255, 1)",
+                backgroundColor: gradient,
                 fill: true,
-                tension: 0.4
+                tension: 0.3,
+                borderWidth: 2
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `Price: $${ctx.formattedValue}`
+                    }
+                },
+                legend: {
+                    labels: { color: "#333", font: { size: 14 } }
+                }
+            },
             scales: {
-                y: { beginAtZero: false }
+                x: { ticks: { color: "#555" } },
+                y: { ticks: { color: "#555" } }
             }
         }
     });
-    
 }
-// --- Function 4: Set Custom Alert ---
-async function setAlertPrice() {
-    const inputField = document.getElementById("alert-input");
-    const newPrice = inputField.value;
 
-    if (!newPrice) {
-        alert("Please enter a valid price!");
-        return;
-    }
+// --- Candlestick Renderer ---
+function renderCandlestickChart(data) {
+    const ctx = document.getElementById("cryptoChart").getContext("2d");
+    if (cryptoChartInstance) cryptoChartInstance.destroy();
 
-    try {
-        const response = await fetch('/api/set-alert', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ price: newPrice })
-        });
-
-        const result = await response.json();
-        
-        if (result.status === "success") {
-            alert(`✅ Alert set! You will be notified if Bitcoin drops below $${result.new_threshold}`);
-        } else {
-            alert("❌ Failed to set alert.");
+    cryptoChartInstance = new Chart(ctx, {
+        type: "candlestick",
+        data: { datasets: [{ label: "OHLC", data }] },
+        options: {
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: ctx => {
+                            const o = ctx.raw;
+                            return [
+                                `Opened: $${o.o}`,
+                                `High: $${o.h}`,
+                                `Low: $${o.l}`,
+                                `Closed: $${o.c}`,
+                                o.c > o.o ? "Price went UP ✅" : "Price went DOWN ❌"
+                            ];
+                        }
+                    }
+                }
+            }
         }
-    } catch (error) {
-        console.error("Error setting alert:", error);
-        alert("❌ Network Error");
+    });
+}
+
+// --- Volume + Market Cap Renderer ---
+function renderChartWithVolume(data, volume, marketCap) {
+    const ctx = document.getElementById("cryptoChart").getContext("2d");
+    if (cryptoChartInstance) cryptoChartInstance.destroy();
+
+    cryptoChartInstance = new Chart(ctx, {
+        type: "line",
+        data: {
+            labels: data.timestamps,
+            datasets: [
+                { label: "Price", data: data.prices, borderColor: "blue", yAxisID: "y" },
+                { label: "Volume", data: volume, type: "bar", backgroundColor: "rgba(0,200,0,0.3)", yAxisID: "y1" },
+                { label: "Market Cap", data: marketCap, borderColor: "orange", borderDash: [5,5], yAxisID: "y" }
+            ]
+        },
+        options: {
+            scales: {
+                y: { position: "left" },
+                y1: { position: "right", grid: { drawOnChartArea: false } }
+            }
+        }
+    });
+}
+
+// --- Historical Selector ---
+document.getElementById("timeSelector").addEventListener("change", e => {
+    const range = e.target.value;
+    const coin = document.getElementById("coinSelector").value;
+    loadChartData(coin, range);
+});
+
+async function loadChartData(coin, range, chartType="line") {
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coin}/market_chart?vs_currency=usd&days=${range}`);
+    const json = await res.json();
+
+    const prices = json.prices.map(p => ({ x: new Date(p[0]), y: p[1] }));
+    const volume = json.total_volumes.map(v => v[1]);
+    const marketCap = json.market_caps.map(m => m[1]);
+
+    if (chartType === "line") {
+        renderLineChart(prices.map(p=>p.y), prices.map(p=>p.x), "rgba(0,200,255,1)", coin);
+    } else if (chartType === "volume") {
+        renderChartWithVolume({timestamps: prices.map(p=>p.x), prices: prices.map(p=>p.y)}, volume, marketCap);
     }
 }
+document.getElementById("lineChartBtn").addEventListener("click", () => {
+    const coin = document.getElementById("coinSelector").value;
+    loadChartData(coin, "7d", "line");
+});
+
+document.getElementById("candlestickChartBtn").addEventListener("click", async () => {
+    const coin = document.getElementById("coinSelector").value;
+    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coin}/ohlc?vs_currency=usd&days=7`);
+    const json = await res.json();
+    const ohlcData = json.map(p => ({ t: p[0], o: p[1], h: p[2], l: p[3], c: p[4] }));
+    renderCandlestickChart(ohlcData);
+});
+
+document.getElementById("volumeChartBtn").addEventListener("click", () => {
+    const coin = document.getElementById("coinSelector").value;
+    loadChartData(coin, "7d", "volume");
+});
