@@ -1,88 +1,176 @@
-b/* Global Styles */
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
-    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364) !important; /* Dark crypto gradient */
-    color: #080808;
-    margin: 0;
-    padding: 0;
+/* =====================
+   GLOBAL STYLES
+===================== */
 
-
+:root {
+    --primary: #00ffcc;
+    --secondary: #0099ff;
+    --accent: #ffcc00;
+    --danger: #ff0066;
+    --bg-dark: #0b1217;
+    --glass: rgba(255, 255, 255, 0.08);
+    --blur: blur(14px);
 }
 
-/* Navbar */
-.navbar-brand {
-    font-weight: bold;
-    font-size: 1.8rem;
-    color: #00ffcc;
- /* Neon accent */
-    text-shadow: 0 0 8px rgba(0, 255, 204, 0.7);
-    transition: color 0.3s ease, text-shadow 0.3s ease;
+body {
+    font-family: 'Inter', 'Segoe UI', sans-serif !important;
+    background: radial-gradient(circle at top, #1b2a32, #070b10 70%);
+    color: #e6f1f7;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
 
+/* =====================
+   NAVBAR
+===================== */
+
+.navbar {
+    background: rgba(10, 20, 30, 0.7);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.9rem;
+    color: var(--primary);
+    letter-spacing: 1px;
+    text-shadow: 0 0 12px rgba(0,255,204,0.5);
+    transition: all 0.4s ease;
 }
 
 .navbar-brand:hover {
-    color: #ffcc00;
-    text-shadow: 0 0 12px rgba(255, 204, 0, 0.9);
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(255,204,0,0.8);
 }
 
-/* Card Styling */
+/* =====================
+   CARDS – 3D GLASS
+===================== */
+
 .card {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 16px;
-    padding: 20px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
-    backdrop-filter: blur(10px);
+    background: linear-gradient(
+        145deg,
+        rgba(255,255,255,0.12),
+        rgba(255,255,255,0.02)
+    );
+    backdrop-filter: var(--blur);
+    border-radius: 20px;
+    padding: 22px;
+    border: 1px solid rgba(255,255,255,0.12);
+    box-shadow:
+        0 20px 40px rgba(0,0,0,0.55),
+        inset 0 1px 1px rgba(255,255,255,0.2);
+    transform-style: preserve-3d;
+    transition: all 0.4s ease;
 }
 
+/* 3D Lift + Tilt */
 .card:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 12px 30px rgba(0, 255, 204, 0.4);
+    transform:
+        translateY(-14px)
+        rotateX(4deg)
+        rotateY(-4deg)
+        scale(1.03);
+    box-shadow:
+        0 35px 60px rgba(0,255,204,0.25),
+        inset 0 1px 1px rgba(255,255,255,0.3);
 }
 
-/* Buttons */
-button {
-    background: linear-gradient(90deg, #00ffcc, #0099ff);
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    color: #fff;
-    font-weight: bold;
+/* Active Coin Highlight */
+.card.active-coin {
+    border: 1px solid var(--primary);
+    box-shadow:
+        0 0 25px rgba(0,255,204,0.5),
+        inset 0 0 20px rgba(0,255,204,0.15);
+}
+
+/* =====================
+   COIN CARDS
+===================== */
+
+.coin-card {
     cursor: pointer;
-    transition: background 0.3s ease, transform 0.2s ease;
+    position: relative;
+}
+
+.coin-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(0,255,204,0.15),
+        transparent
+    );
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.coin-card:hover::after {
+    opacity: 1;
+}
+
+/* =====================
+   BUTTONS – MODERN NEON
+===================== */
+
+button {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border: none;
+    border-radius: 10px;
+    padding: 12px 26px;
+    color: #021014;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    box-shadow: 0 10px 30px rgba(0,255,204,0.35);
+    transition: all 0.3s ease;
 }
 
 button:hover {
-    background: linear-gradient(90deg, #ffcc00, #ff0066);
-    transform: scale(1.05);
+    background: linear-gradient(135deg, var(--accent), var(--danger));
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 18px 45px rgba(255,204,0,0.5);
 }
 
-/* Canvas (Charts) */
+/* =====================
+   CHART CANVAS
+===================== */
+
 canvas {
-    max-height: 400px;
-    background: rgba(255, 255, 255, 0.02);
-    border-radius: 12px;
-    padding: 10px;
-    box-shadow: inset 0 0 20px rgba(0, 255, 204, 0.3);
+    max-height: 420px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow:
+        inset 0 0 30px rgba(0,255,204,0.25),
+        0 10px 30px rgba(0,0,0,0.6);
 }
 
-/* Animations */
-@keyframes glow {
-    0% { text-shadow: 0 0 5px #00ffcc; }
-    50% { text-shadow: 0 0 20px #00ffcc; }
-    100% { text-shadow: 0 0 5px #00ffcc; }
-}
+/* =====================
+   HEADINGS – SUBTLE GLOW
+===================== */
 
 h1, h2, h3 {
-    animation: glow 2s infinite alternate;
-}
-/* Add a blue border when a card is clicked/active (we will toggle this later if we want strict highlighting) */
-.card.active-coin {
-    border: 2px solid #0d6efd !important;
-    background-color: #f0f8ff;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-shadow: 0 0 10px rgba(0,255,204,0.25);
 }
 
-/* Make the pointer cursor obvious */
-.coin-card {
-    cursor: pointer;
+/* =====================
+   MICRO ANIMATIONS
+===================== */
+
+@keyframes float {
+    0% { transform: translateY(0); }
+    50% { transform: translateY(-6px); }
+    100% { transform: translateY(0); }
+}
+
+.card.floating {
+    animation: float 5s ease-in-out infinite;
 }
