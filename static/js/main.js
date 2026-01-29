@@ -1,4 +1,13 @@
-// Global chart instance
+Chart.defaults.font.family = "'Inter', 'Segoe UI', system-ui, sans-serif";
+Chart.defaults.color = "#6B7280"; // Tailwind gray-500
+Chart.defaults.plugins.legend.display = false;
+Chart.defaults.plugins.tooltip.backgroundColor = "#111827";
+Chart.defaults.plugins.tooltip.titleColor = "#F9FAFB";
+Chart.defaults.plugins.tooltip.bodyColor = "#E5E7EB";
+Chart.defaults.plugins.tooltip.borderColor = "#374151";
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.padding = 10;
+
 let cryptoChartInstance = null;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -6,6 +15,35 @@ document.addEventListener("DOMContentLoaded", () => {
     updatePrices();
     setInterval(updatePrices, 10000);
     selectCoin("bitcoin"); // default
+});
+
+// Attach UI listeners after DOM is ready
+document.addEventListener("DOMContentLoaded", () => {
+    const timeSel = document.getElementById("timeSelector");
+    const coinSel = document.getElementById("coinSelector");
+    const lineBtn = document.getElementById("lineChartBtn");
+    const volBtn = document.getElementById("volumeChartBtn");
+    const setAlertBtn = document.getElementById("setAlertBtn");
+
+    if (timeSel && coinSel) {
+        timeSel.addEventListener("change", e => {
+            const range = e.target.value;
+            const coin = coinSel.value;
+            loadChartData(coin, range);
+        });
+    }
+
+    if (lineBtn) lineBtn.addEventListener("click", () => {
+        const coin = document.getElementById("coinSelector").value;
+        loadChartData(coin, "7", "line");
+    });
+
+    if (volBtn) volBtn.addEventListener("click", () => {
+        const coin = document.getElementById("coinSelector").value;
+        loadChartData(coin, "7", "volume");
+    });
+
+    if (setAlertBtn) setAlertBtn.addEventListener("click", setAlertPrice);
 });
 
 // --- Fetch Prices ---
@@ -53,72 +91,61 @@ function renderLineChart(prices, labels, color, coinName) {
     const ctx = document.getElementById("cryptoChart").getContext("2d");
     if (cryptoChartInstance) cryptoChartInstance.destroy();
 
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, "rgba(0, 200, 255, 0.6)");
-    gradient.addColorStop(1, "rgba(0, 100, 200, 0.1)");
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, "rgba(59,130,246,0.35)");
+    gradient.addColorStop(1, "rgba(59,130,246,0)");
 
     cryptoChartInstance = new Chart(ctx, {
         type: "line",
         data: {
             labels,
             datasets: [{
-                label: `${coinName.toUpperCase()} Price (USD)`,
                 data: prices,
-                borderColor: color || "rgba(0, 200, 255, 1)",
+                borderColor: color || "#3B82F6",
                 backgroundColor: gradient,
                 fill: true,
-                tension: 0.3,
-                borderWidth: 2
+                tension: 0.35,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 4
             }]
         },
         options: {
+            interaction: { mode: "index", intersect: false },
             responsive: true,
+            animation: { duration: 800 },
             plugins: {
                 tooltip: {
                     callbacks: {
-                        label: ctx => `Price: $${ctx.formattedValue}`
+                        label: ctx => `$${Number(ctx.parsed.y).toLocaleString()}`
                     }
                 },
-                legend: {
-                    labels: { color: "#333", font: { size: 14 } }
+                title: {
+                    display: true,
+                    text: `${coinName.toUpperCase()} Price`,
+                    color: "#111827",
+                    font: { size: 16, weight: "600" }
                 }
             },
             scales: {
-                x: { ticks: { color: "#555" } },
-                y: { ticks: { color: "#555" } }
-            }
-        }
-    });
-}
-
-// --- Candlestick Renderer ---
-function renderCandlestickChart(data) {
-    const ctx = document.getElementById("cryptoChart").getContext("2d");
-    if (cryptoChartInstance) cryptoChartInstance.destroy();
-
-    cryptoChartInstance = new Chart(ctx, {
-        type: "candlestick",
-        data: { datasets: [{ label: "OHLC", data }] },
-        options: {
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: ctx => {
-                            const o = ctx.raw;
-                            return [
-                                `Opened: $${o.o}`,
-                                `High: $${o.h}`,
-                                `Low: $${o.l}`,
-                                `Closed: $${o.c}`,
-                                o.c > o.o ? "Price went UP ✅" : "Price went DOWN ❌"
-                            ];
-                        }
+                x: {
+                    type: "time",
+                    grid: { display: false },
+                    ticks: { maxTicksLimit: 6 }
+                },
+                y: {
+                    grid: { color: "rgba(0,0,0,0.05)" },
+                    ticks: {
+                        callback: v => `$${v.toLocaleString()}`
                     }
                 }
             }
         }
     });
 }
+
+// Candlestick chart removed - requires additional library (chartjs-chart-financial)
+// If needed in the future, install: https://github.com/chartjs/chartjs-chart-financial
 
 // --- Volume + Market Cap Renderer ---
 function renderChartWithVolume(data, volume, marketCap) {
@@ -126,19 +153,51 @@ function renderChartWithVolume(data, volume, marketCap) {
     if (cryptoChartInstance) cryptoChartInstance.destroy();
 
     cryptoChartInstance = new Chart(ctx, {
-        type: "line",
         data: {
             labels: data.timestamps,
             datasets: [
-                { label: "Price", data: data.prices, borderColor: "blue", yAxisID: "y" },
-                { label: "Volume", data: volume, type: "bar", backgroundColor: "rgba(0,200,0,0.3)", yAxisID: "y1" },
-                { label: "Market Cap", data: marketCap, borderColor: "orange", borderDash: [5,5], yAxisID: "y" }
+                {
+                    type: "line",
+                    label: "Price",
+                    data: data.prices,
+                    borderColor: "#3B82F6",
+                    yAxisID: "y",
+                    tension: 0.35,
+                    pointRadius: 0
+                },
+                {
+                    type: "bar",
+                    label: "Volume",
+                    data: volume,
+                    backgroundColor: "rgba(16,185,129,0.25)",
+                    yAxisID: "y1"
+                },
+                {
+                    type: "line",
+                    label: "Market Cap",
+                    data: marketCap,
+                    borderColor: "#F59E0B",
+                    borderDash: [6, 6],
+                    yAxisID: "y"
+                }
             ]
         },
         options: {
+            interaction: { mode: "index", intersect: false },
             scales: {
-                y: { position: "left" },
-                y1: { position: "right", grid: { drawOnChartArea: false } }
+                y: {
+                    position: "left",
+                    ticks: {
+                        callback: v => `$${v.toLocaleString()}`
+                    }
+                },
+                y1: {
+                    position: "right",
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        callback: v => v.toLocaleString()
+                    }
+                }
             }
         }
     });
@@ -165,20 +224,33 @@ async function loadChartData(coin, range, chartType="line") {
         renderChartWithVolume({timestamps: prices.map(p=>p.x), prices: prices.map(p=>p.y)}, volume, marketCap);
     }
 }
-document.getElementById("lineChartBtn").addEventListener("click", () => {
-    const coin = document.getElementById("coinSelector").value;
-    loadChartData(coin, "7d", "line");
-});
 
-document.getElementById("candlestickChartBtn").addEventListener("click", async () => {
-    const coin = document.getElementById("coinSelector").value;
-    const res = await fetch(`https://api.coingecko.com/api/v3/coins/${coin}/ohlc?vs_currency=usd&days=7`);
-    const json = await res.json();
-    const ohlcData = json.map(p => ({ t: p[0], o: p[1], h: p[2], l: p[3], c: p[4] }));
-    renderCandlestickChart(ohlcData);
-});
+// Buttons wired in DOMContentLoaded above
 
-document.getElementById("volumeChartBtn").addEventListener("click", () => {
-    const coin = document.getElementById("coinSelector").value;
-    loadChartData(coin, "7d", "volume");
-});
+// --- Set Alert (persist to backend) ---
+async function setAlertPrice() {
+    const input = document.getElementById("alert-input");
+    if (!input) return;
+    const price = Number(input.value);
+    if (!price || price <= 0) {
+        alert('Enter a valid price');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/set-alert', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ price })
+        });
+        const json = await res.json();
+        if (res.ok) {
+            showToast(`Alert set at $${price}`);
+        } else {
+            alert('Failed to set alert: ' + (json.error || res.statusText));
+        }
+    } catch (err) {
+        console.error('Error setting alert:', err);
+        alert('Network error');
+    }
+}
