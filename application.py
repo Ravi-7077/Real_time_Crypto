@@ -21,7 +21,7 @@ login_manager.login_view = "login"
 sns_client = boto3.client("sns", region_name="us-east-1")
 dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
 
-SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN")
+SNS_TOPIC_ARN = os.environ.get("arn:aws:sns:us-east-1:585662413747:CryptoAlerts")
 DYNAMO_TABLE_NAME = os.environ.get("DYNAMO_TABLE_NAME", "CryptoHistory")
 
 history_table = dynamodb.Table(DYNAMO_TABLE_NAME)
