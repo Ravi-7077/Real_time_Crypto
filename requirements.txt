@@ -3,3 +3,4 @@ Flask-Login
 Flask-Bcrypt
 requests
 flask-cors
+boto3
