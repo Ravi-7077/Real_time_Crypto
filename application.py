@@ -30,7 +30,7 @@ except Exception as e:
     dynamodb = None
 
 # FIX: Correctly fetch the Env Var, or use the hardcoded ARN as a fallback
-SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:503561412984:CryptoAlerts")
+SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:585662413747:CryptoAlerts")
 DYNAMO_TABLE_NAME = os.environ.get("DYNAMO_TABLE_NAME", "CryptoHistory")
 
 if dynamodb:
