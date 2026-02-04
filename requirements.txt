@@ -4,3 +4,4 @@ Flask-Bcrypt
 requests
 flask-cors
 boto3
+gunicorn
