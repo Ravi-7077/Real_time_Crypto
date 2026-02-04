@@ -6,6 +6,7 @@ from flask_cors import CORS
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from datetime import datetime
+from boto3.dynamodb.conditions import Key # Needed for efficient querying
 
 # --- AWS Configuration ---
 application = app = Flask(__name__)
@@ -18,13 +19,22 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 
 # --- AWS Clients ---
-sns_client = boto3.client("sns", region_name="us-east-1")
-dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+# We use conditional logic to prevent crashing if running locally without AWS credentials
+REGION = "us-east-1"
+try:
+    sns_client = boto3.client("sns", region_name=REGION)
+    dynamodb = boto3.resource("dynamodb", region_name=REGION)
+except Exception as e:
+    print(f"AWS Clients failed to initialize (Ignore if running locally): {e}")
+    sns_client = None
+    dynamodb = None
 
-SNS_TOPIC_ARN = os.environ.get("arn:aws:sns:us-east-1:503561412984:CryptoAlerts")
+# FIX: Correctly fetch the Env Var, or use the hardcoded ARN as a fallback
+SNS_TOPIC_ARN = os.environ.get("SNS_TOPIC_ARN", "arn:aws:sns:us-east-1:503561412984:CryptoAlerts")
 DYNAMO_TABLE_NAME = os.environ.get("DYNAMO_TABLE_NAME", "CryptoHistory")
 
-history_table = dynamodb.Table(DYNAMO_TABLE_NAME)
+if dynamodb:
+    history_table = dynamodb.Table(DYNAMO_TABLE_NAME)
 
 # --- Mock User Database ---
 users = {
@@ -98,19 +108,28 @@ def get_prices():
                 app_state["alert_triggered"] = True
 
                 # --- Send SNS Alert ---
-                sns_client.publish(
-                    TopicArn=SNS_TOPIC_ARN,
-                    Message=f"Bitcoin price dropped below {threshold}! Current: {current_btc}",
-                    Subject="Crypto Alert"
-                )
+                if sns_client and SNS_TOPIC_ARN:
+                    try:
+                        sns_client.publish(
+                            TopicArn=SNS_TOPIC_ARN,
+                            Message=f"Bitcoin price dropped below {threshold}! Current: {current_btc}",
+                            Subject="Crypto Alert"
+                        )
+                        print("✅ SNS Alert Sent")
+                    except Exception as e:
+                        print(f"❌ SNS Failed: {e}")
 
                 # --- Save to DynamoDB ---
-                history_table.put_item(Item={
-                    "coin": "bitcoin",
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "price": str(current_btc),
-                    "alert_triggered": True
-                })
+                if dynamodb:
+                    try:
+                        history_table.put_item(Item={
+                            "coin_id": "bitcoin", # Matches Partition Key defined in AWS
+                            "timestamp": int(datetime.utcnow().timestamp()), # Use Number for Sort Key
+                            "price": str(current_btc),
+                            "alert_triggered": True
+                        })
+                    except Exception as e:
+                        print(f"❌ DB Save Failed: {e}")
 
             if current_btc > threshold:
                 app_state["alert_triggered"] = False
@@ -137,12 +156,25 @@ def set_alert():
 @app.route("/api/history/<coin_id>")
 def get_history(coin_id):
     try:
-        # --- Fetch from DynamoDB ---
-        response = history_table.scan()
-        items = [item for item in response["Items"] if item["coin"] == coin_id]
+        if not dynamodb:
+            return jsonify({"error": "Database not connected"}), 500
+            
+        # --- FIX: Use Query instead of Scan ---
+        # Query is much faster and cheaper than scanning the whole table
+        response = history_table.query(
+            KeyConditionExpression=Key('coin_id').eq(coin_id),
+            Limit=50, # Only get the last 50 records
+            ScanIndexForward=False # Get newest first
+        )
+        
+        items = response.get("Items", [])
+        
+        # Sort back to oldest-first for the chart
+        items.reverse()
 
         prices = [float(item["price"]) for item in items]
-        labels = [item["timestamp"] for item in items]
+        # Convert timestamp number back to readable time
+        labels = [datetime.fromtimestamp(int(item["timestamp"])).strftime('%H:%M') for item in items]
 
         return jsonify({
             "prices": prices,
