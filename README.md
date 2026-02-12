@@ -52,15 +52,6 @@ The application follows a standard MVC architecture enhanced with AWS Cloud serv
 
 ---
 
-## 📸 Screenshots
-
-*(Optional: Add screenshots of your dashboard here)*
-
-| Dashboard View | Historical Charts | Login Screen |
-|:---:|:---:|:---:|
-| ![Dashboard](https://via.placeholder.com/300x200?text=Dashboard+UI) | ![Charts](https://via.placeholder.com/300x200?text=Chart+View) | ![Login](https://via.placeholder.com/300x200?text=Login+Page) |
-
----
 
 ## ⚙️ Installation & Local Setup
 
