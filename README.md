@@ -53,32 +53,6 @@ The application follows a standard MVC architecture enhanced with AWS Cloud serv
 ---
 
 
-## ⚙️ Installation & Local Setup
-
-If you want to run this project locally:
-
-1.  **Clone the Repo**
-    ```bash
-    git clone [https://github.com/your-username/crypto-tracker-aws.git](https://github.com/your-username/crypto-tracker-aws.git)
-    cd crypto-tracker-aws
-    ```
-
-2.  **Install Dependencies**
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-3.  **Set Environment Variables**
-    (Or rely on the defaults in `application.py` for local dev)
-    ```bash
-    export FLASK_APP=application.py
-    ```
-
-4.  **Run the App**
-    ```bash
-    flask run
-    ```
-    Access at `http://localhost:5000`
 
 ---
 
